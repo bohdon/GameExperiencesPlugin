@@ -4,10 +4,7 @@ An Unreal plugin for defining modular extensions to game modes that leverage the
 
 # Extended Game Feature Actions Plugin
 
-An accompanying plugin that provides additional game feature actions for:
-
-- Adding gameplay abilities and gameplay cue paths.
-- Adding widgets to the scren using Primary Game Layout from Lyra's CommonGame plugin.
+An accompanying plugin to GameExperiences that provides additional game feature actions.
 
 ### Features
 
