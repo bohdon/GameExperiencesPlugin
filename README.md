@@ -11,8 +11,11 @@ An accompanying plugin that provides additional game feature actions for:
 
 ### Features
 
-- `UGameFeatureAction_AddWidgets` - Add a widget or screen layout using the PrimaryGameLayout and/or UI extension points.
-- `UGameFeatureAction_AddAbilities` - Add gameplay abilities to an actor using extended ability sets.
+- `UGameFeatureAction_AddWidgets` - Add widgets to the screen using the
+    [PrimaryGameLayout](https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Samples/Games/Lyra/Plugins/CommonGame/Source/Public/PrimaryGameLayout.h)
+    and/or [UI extension points](https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Samples/Games/Lyra/Plugins/UIExtension/Source/Public/UIExtensionSystem.h).
+- `UGameFeatureAction_AddAbilities` - Add gameplay abilities to an actor using
+    [extended ability sets](https://github.com/bohdon/ExtendedGameplayAbilitiesPlugin/blob/main/Plugins/ExtendedGameplayAbilities/Source/ExtendedGameplayAbilities/Public/ExtendedAbilitySet.h).
 - `UGameFeatureAction_AddGameplayCuePaths` - Add additional gameplay cue paths to search.
 
 ### Plugin Dependencies
