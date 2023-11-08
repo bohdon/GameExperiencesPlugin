@@ -4,7 +4,7 @@ An Unreal plugin for defining modular extensions to game modes that leverage the
 
 # Extended Game Feature Actions Plugin
 
-A collection of game feature actions for modularly adding abilities, widgets and more. This accompany's the GameExperiences plugin well by allowing each experience to define which abilities and UI to enable.
+A collection of game feature actions for modularly adding abilities, widgets and more. This accompanies the GameExperiences plugin well by allowing each experience to define which abilities and UI to enable.
 
 ### Features
 
