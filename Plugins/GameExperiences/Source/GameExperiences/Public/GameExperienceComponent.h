@@ -26,7 +26,7 @@ enum class EGameExperienceLoadState
 
 /** The priority of callbacks for OnGameExperienceLoaded events. */
 UENUM(BlueprintType)
-enum class EGameExperienceLoadEventPriority
+enum class EGameExperienceLoadEventPriority : uint8
 {
 	// Called 2nd, after High priority
 	Normal,
