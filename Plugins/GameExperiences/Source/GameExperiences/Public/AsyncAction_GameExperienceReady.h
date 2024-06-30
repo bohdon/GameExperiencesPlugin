@@ -21,7 +21,7 @@ class GAMEEXPERIENCES_API UAsyncAction_GameExperienceReady : public UBlueprintAs
 
 public:
 	UFUNCTION(BlueprintCallable, Meta = (WorldContext = "WorldContextObject", BlueprintInternalUseOnly = true))
-	static UAsyncAction_GameExperienceReady* WaitForGameExperienceReady(UObject* WorldContextObject, TEnumAsByte<EGameExperienceLoadEventPriority> Priority);
+	static UAsyncAction_GameExperienceReady* WaitForGameExperienceReady(UObject* WorldContextObject, EGameExperienceLoadEventPriority Priority);
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReadyDynDelegate);
 
@@ -36,7 +36,7 @@ protected:
 	TWeakObjectPtr<UWorld> GameWorld;
 
 	/** The priority to use for the experience loaded callback. */
-	TEnumAsByte<EGameExperienceLoadEventPriority> Priority;
+	EGameExperienceLoadEventPriority Priority;
 
 	void OnGameStateAvailable(AGameStateBase* GameState);
 	void OnExperienceLoaded(const UGameExperienceDef* CurrentExperience);

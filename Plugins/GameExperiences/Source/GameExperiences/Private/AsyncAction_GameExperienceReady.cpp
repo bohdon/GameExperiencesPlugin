@@ -4,10 +4,11 @@
 #include "AsyncAction_GameExperienceReady.h"
 
 #include "GameExperienceComponent.h"
+#include "Engine/Engine.h"
 
 
 UAsyncAction_GameExperienceReady* UAsyncAction_GameExperienceReady::WaitForGameExperienceReady(UObject* WorldContextObject,
-                                                                                               TEnumAsByte<EGameExperienceLoadEventPriority> Priority)
+                                                                                               EGameExperienceLoadEventPriority Priority)
 {
 	if (UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull))
 	{
