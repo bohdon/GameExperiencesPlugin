@@ -122,7 +122,10 @@ void UGameFeatureAction_AddAbilities::RemoveAbilitySets(AActor* Actor, FAbilityC
 		// remove the granted ability sets
 		for (FExtendedAbilitySetHandles& AbilitySetHandles : *ActorAbilitySetHandles)
 		{
-			UExtendedAbilitySet::RemoveFromAbilitySystem(AbilitySystem, AbilitySetHandles);
+			if (AbilitySetHandles.AbilitySet)
+			{
+				AbilitySetHandles.AbilitySet->RemoveFromAbilitySystem(AbilitySystem, AbilitySetHandles);
+			}
 		}
 	}
 
