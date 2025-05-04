@@ -6,8 +6,6 @@ public class ExtendedGameFeatureActions : ModuleRules
 {
 	public ExtendedGameFeatureActions(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"CommonGame",

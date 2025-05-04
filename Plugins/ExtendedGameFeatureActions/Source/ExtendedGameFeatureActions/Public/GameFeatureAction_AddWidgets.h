@@ -8,6 +8,7 @@
 #include "UIExtensionSystem.h"
 #include "GameFeatureAction_AddWidgets.generated.h"
 
+class AHUD;
 class UCommonActivatableWidget;
 
 

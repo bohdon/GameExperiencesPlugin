@@ -6,8 +6,6 @@ public class GameExperiences : ModuleRules
 {
 	public GameExperiences(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"CommonUser",

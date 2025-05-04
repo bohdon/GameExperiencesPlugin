@@ -6,6 +6,7 @@
 #include "CommonActivatableWidget.h"
 #include "CommonUIExtensions.h"
 #include "UIExtensionSystem.h"
+#include "Engine/GameInstance.h"
 #include "GameFramework/HUD.h"
 
 

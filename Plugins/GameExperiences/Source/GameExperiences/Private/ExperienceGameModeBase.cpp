@@ -5,6 +5,7 @@
 
 #include "GameExperienceComponent.h"
 #include "GameExperiencesModule.h"
+#include "TimerManager.h"
 
 
 AExperienceGameModeBase::AExperienceGameModeBase(const FObjectInitializer& ObjectInitializer)

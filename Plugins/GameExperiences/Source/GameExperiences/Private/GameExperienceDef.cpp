@@ -3,6 +3,9 @@
 
 #include "GameExperienceDef.h"
 
+#include "Misc/PackageName.h"
+#include "UObject/Package.h"
+
 
 UGameExperienceDef::UGameExperienceDef()
 {
