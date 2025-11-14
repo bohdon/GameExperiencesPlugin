@@ -13,7 +13,7 @@ void UExtendedGameFeaturesProjectPolicies::InitGameFeatureManager()
 	UGameFeaturesSubsystem& FeaturesSubsystem = UGameFeaturesSubsystem::Get();
 	for (UObject* Observer : Observers)
 	{
-		FeaturesSubsystem.AddObserver(Observer);
+		FeaturesSubsystem.AddObserver(Observer, UGameFeaturesSubsystem::EObserverPluginStateUpdateMode::FutureOnly);
 	}
 
 	Super::InitGameFeatureManager();
