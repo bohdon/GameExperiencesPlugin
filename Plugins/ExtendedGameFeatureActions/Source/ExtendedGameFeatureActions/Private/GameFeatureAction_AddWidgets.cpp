@@ -29,7 +29,7 @@ void UGameFeatureAction_AddWidgets::Reset(FContextHandles& Handles)
 	for (auto& Elem : WidgetHandles.ActorData)
 	{
 		// deactivate layouts
-		for (TWeakObjectPtr<UCommonActivatableWidget>& Layout : Elem.Value.LayoutsAdded)
+		for (TWeakObjectPtr<UCommonActivatableWidget>& Layout : Elem.Value.Layouts)
 		{
 			if (Layout.IsValid())
 			{
@@ -63,10 +63,10 @@ void UGameFeatureAction_AddWidgets::AddToWorld(const FWorldContext& WorldContext
 
 	FWidgetContextHandles& Handles = FindOrAddContextHandles<FWidgetContextHandles>(ChangeContext);
 
-	// register for HUD actors
-	TSoftClassPtr<AActor> ActorClass = !HUDClass.IsNull() ? HUDClass : AHUD::StaticClass();
+	// listen for actor registration
+	const TSoftClassPtr<AActor> ActorClass = !HUDClass.IsNull() ? HUDClass : AHUD::StaticClass();
 
-	TSharedPtr<FComponentRequestHandle> RequestHandle = ComponentManager->AddExtensionHandler(
+	const TSharedPtr<FComponentRequestHandle> RequestHandle = ComponentManager->AddExtensionHandler(
 		ActorClass, UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(this, &ThisClass::HandleActorExtension, ChangeContext));
 
 	Handles.ComponentRequestHandles.Add(RequestHandle);
@@ -90,7 +90,7 @@ void UGameFeatureAction_AddWidgets::HandleActorExtension(AActor* Actor, FName Ev
 
 void UGameFeatureAction_AddWidgets::AddWidgets(AActor* Actor, FWidgetContextHandles& Handles)
 {
-	AHUD* HUD = CastChecked<AHUD>(Actor);
+	const AHUD* HUD = CastChecked<AHUD>(Actor);
 
 	ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(HUD->GetOwningPlayerController()->Player);
 	if (!LocalPlayer)
@@ -104,18 +104,19 @@ void UGameFeatureAction_AddWidgets::AddWidgets(AActor* Actor, FWidgetContextHand
 	// add primary game layout widgets
 	for (const FGameFeatureLayoutWidgetEntry& Entry : Layouts)
 	{
-		if (TSubclassOf<UCommonActivatableWidget> WidgetClass = Entry.WidgetClass.Get())
+		if (const TSubclassOf<UCommonActivatableWidget> WidgetClass = Entry.WidgetClass.Get())
 		{
 			UCommonActivatableWidget* Layout = UCommonUIExtensions::PushContentToLayer_ForPlayer(LocalPlayer, Entry.Layer, WidgetClass);
-			ActorData.LayoutsAdded.Add(Layout);
+			ActorData.Layouts.Add(Layout);
 		}
 	}
 
 	// add all extension point widgets
-	UUIExtensionSubsystem* ExtensionSubsystem = HUD->GetWorld()->GetSubsystem<UUIExtensionSubsystem>();
+	UUIExtensionSubsystem* ExtensionSubsystem = Actor->GetWorld()->GetSubsystem<UUIExtensionSubsystem>();
 	for (const FGameFeatureExtensionWidgetEntry& Entry : Widgets)
 	{
-		FUIExtensionHandle ExtensionHandle = ExtensionSubsystem->RegisterExtensionAsWidgetForContext(Entry.ExtensionPoint, LocalPlayer, Entry.WidgetClass.Get(), -1);
+		FUIExtensionHandle ExtensionHandle = ExtensionSubsystem->RegisterExtensionAsWidgetForContext(
+			Entry.ExtensionPoint, LocalPlayer, Entry.WidgetClass.Get(), -1);
 		ActorData.ExtensionHandles.Add(ExtensionHandle);
 	}
 }
@@ -128,7 +129,7 @@ void UGameFeatureAction_AddWidgets::RemoveWidgets(AActor* Actor, FWidgetContextH
 		return;
 	}
 
-	for (const TWeakObjectPtr<UCommonActivatableWidget>& Layout : ActorData->LayoutsAdded)
+	for (const TWeakObjectPtr<UCommonActivatableWidget>& Layout : ActorData->Layouts)
 	{
 		if (Layout.IsValid())
 		{

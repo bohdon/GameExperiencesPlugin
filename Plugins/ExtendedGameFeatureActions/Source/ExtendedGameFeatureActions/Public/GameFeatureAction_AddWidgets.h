@@ -53,7 +53,7 @@ class EXTENDEDGAMEFEATUREACTIONS_API UGameFeatureAction_AddWidgets : public UGam
 public:
 	UGameFeatureAction_AddWidgets();
 
-	/** The HUD class to extend. */
+	/** The HUD class to extend. Should register with game component manager (like AModularHUD) */
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSoftClassPtr<AHUD> HUDClass;
 
@@ -68,15 +68,16 @@ public:
 protected:
 	struct FActorHandlesData
 	{
-		/** Layout widget instances that were added for this actor. */
-		TArray<TWeakObjectPtr<UCommonActivatableWidget>> LayoutsAdded;
-		/** UI extension handles for widgets added. */
+		/** Layout widget instances that were added. */
+		TArray<TWeakObjectPtr<UCommonActivatableWidget>> Layouts;
+
+		/** UI extension handles that were added. */
 		TArray<FUIExtensionHandle> ExtensionHandles;
 	};
 
-	struct FWidgetContextHandles : public FContextHandles
+	struct FWidgetContextHandles : FContextHandles
 	{
-		/** Per-actor data about which added widgets. */
+		/** Per-actor data about added widgets. */
 		TMap<FObjectKey, FActorHandlesData> ActorData;
 
 		virtual bool IsEmpty() const override
