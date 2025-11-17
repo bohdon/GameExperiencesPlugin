@@ -20,6 +20,7 @@ public class GameExperiences : ModuleRules
 		{
 			"CoreUObject",
 			"Engine",
+			"NetCore",
 			"Slate",
 			"SlateCore",
 		});

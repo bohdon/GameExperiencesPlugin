@@ -4,6 +4,7 @@
 #include "GameExperienceComponent.h"
 
 #include "GameExperienceActionSet.h"
+#include "GameExperienceExternalFeatureInterface.h"
 #include "GameExperiencesModule.h"
 #include "GameExperienceWorldSettings.h"
 #include "GameFeatureAction.h"
@@ -14,6 +15,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Misc/CommandLine.h"
 #include "Net/UnrealNetwork.h"
+#include "Net/Core/PushModel/PushModel.h"
 
 
 TAutoConsoleVariable CVarGameExperienceDebugLoadDelay(
@@ -46,7 +48,17 @@ void UGameExperienceComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ThisClass, Experience);
+	FDoRepLifetimeParams Params;
+	Params.bIsPushBased = true;
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, Experience, Params);
+}
+
+void UGameExperienceComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	DeactivateExperience();
 }
 
 FPrimaryAssetId UGameExperienceComponent::GetDesiredGameExperience(FString& OutDebugSource) const
@@ -128,6 +140,7 @@ void UGameExperienceComponent::SetExperience(const FPrimaryAssetId& ExperienceId
 	const TSubclassOf<UGameExperienceDef> ExperienceClass = Cast<UClass>(AssetPath.TryLoad());
 
 	Experience = ExperienceClass->GetDefaultObject<UGameExperienceDef>();
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, Experience, this);
 	check(Experience);
 
 	LoadExperience();
@@ -162,16 +175,18 @@ void UGameExperienceComponent::CallOrRegisterOnExperienceLoaded(FOnGameExperienc
 	}
 }
 
-void UGameExperienceComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	Super::EndPlay(EndPlayReason);
-
-	DeactivateExperience();
-}
-
 void UGameExperienceComponent::OnRep_Experience()
 {
 	LoadExperience();
+}
+
+void UGameExperienceComponent::SetLoadState(EGameExperienceLoadState NewLoadState)
+{
+	LoadState = NewLoadState;
+
+	UE_LOG(LogGameExperience, Verbose, TEXT("[%s] LoadState: %s"),
+		*Experience->GetPrimaryAssetId().PrimaryAssetName.ToString(),
+		*StaticEnum<EGameExperienceLoadState>()->GetNameStringByValue((uint8)NewLoadState));
 }
 
 void UGameExperienceComponent::LoadExperience()
@@ -179,7 +194,7 @@ void UGameExperienceComponent::LoadExperience()
 	check(LoadState == EGameExperienceLoadState::Unloaded);
 	check(Experience);
 
-	LoadState = EGameExperienceLoadState::Loading;
+	SetLoadState(EGameExperienceLoadState::Loading);
 
 	// determine whether to load client/server bundles
 	TArray<FName> BundlesToLoad;
@@ -246,8 +261,8 @@ void UGameExperienceComponent::LoadGameFeaturePlugins()
 			}
 			else
 			{
-				ensureMsgf(false, TEXT("UGameExperienceComponent::OnExperienceAssetsLoaded: Failed to find game feature plugin %s for experience %s"),
-				           *PluginName, *Experience->GetName());
+				ensureMsgf(false, TEXT("[%s] [%hs] Couldn't find game feature plugin: %s"),
+					*Experience->GetPrimaryAssetId().PrimaryAssetName.ToString(), __func__, *PluginName);
 			}
 		}
 	}
@@ -255,7 +270,7 @@ void UGameExperienceComponent::LoadGameFeaturePlugins()
 	NumFeaturePluginsLoading = GameFeaturePluginURLs.Num();
 	if (NumFeaturePluginsLoading > 0)
 	{
-		LoadState = EGameExperienceLoadState::LoadingGameFeatures;
+		SetLoadState(EGameExperienceLoadState::LoadingGameFeatures);
 
 		for (FString& PluginURL : GameFeaturePluginURLs)
 		{
@@ -265,7 +280,7 @@ void UGameExperienceComponent::LoadGameFeaturePlugins()
 	}
 	else
 	{
-		OnExperienceLoaded();
+		OnAllGameFeaturePluginsLoaded();
 	}
 }
 
@@ -276,11 +291,11 @@ void UGameExperienceComponent::OnGameFeaturePluginLoaded(const UE::GameFeatures:
 	// continue once all plugins are loaded
 	if (NumFeaturePluginsLoading == 0)
 	{
-		OnExperienceLoaded();
+		OnAllGameFeaturePluginsLoaded();
 	}
 }
 
-void UGameExperienceComponent::OnExperienceLoaded()
+void UGameExperienceComponent::OnAllGameFeaturePluginsLoaded()
 {
 	check(LoadState == EGameExperienceLoadState::Loading ||
 		LoadState == EGameExperienceLoadState::LoadingGameFeatures ||
@@ -291,35 +306,23 @@ void UGameExperienceComponent::OnExperienceLoaded()
 		const float Delay = GetGameExperienceDebugLoadDelay();
 		if (Delay > 0.f)
 		{
-			LoadState = EGameExperienceLoadState::DebugDelay;
+			SetLoadState(EGameExperienceLoadState::DebugDelay);
 
 			// schedule calling this function again after the delay
 			FTimerHandle DebugDelayHandle;
-			GetWorldTimerManager().SetTimer(DebugDelayHandle, this, &ThisClass::OnExperienceLoaded, Delay, /*InbLoop*/ false);
+			GetWorldTimerManager().SetTimer(DebugDelayHandle, this, &ThisClass::OnAllGameFeaturePluginsLoaded, Delay, /*InbLoop*/ false);
 			return;
 		}
 	}
 
 	ExecuteActions();
 
-	LoadState = EGameExperienceLoadState::Loaded;
-
-	// broadcast events
-	OnExperienceLoadedEvent_HighPriority.Broadcast(Experience);
-	OnExperienceLoadedEvent_HighPriority.Clear();
-
-	OnExperienceLoadedEvent.Broadcast(Experience);
-	OnExperienceLoadedEvent.Clear();
-
-	OnExperienceLoadedEvent_LowPriority.Broadcast(Experience);
-	OnExperienceLoadedEvent_LowPriority.Clear();
-
-	UE_LOG(LogGameExperience, Verbose, TEXT("GameExperience load completed: %s"), *GetNameSafe(Experience));
+	LoadExternalFeatures();
 }
 
 void UGameExperienceComponent::ExecuteActions()
 {
-	LoadState = EGameExperienceLoadState::ExecutingActions;
+	SetLoadState(EGameExperienceLoadState::ExecutingActions);
 
 	FGameFeatureActivatingContext Context;
 	if (const FWorldContext* WorldContext = GEngine->GetWorldContextFromWorld(GetWorld()))
@@ -347,6 +350,74 @@ void UGameExperienceComponent::ExecuteActions()
 	}
 }
 
+void UGameExperienceComponent::RegisterExternalFeature(IGameExperienceExternalFeatureInterface* ExternalFeature)
+{
+	check(ExternalFeature);
+	check(LoadState != EGameExperienceLoadState::LoadingExternalFeatures &&
+		LoadState != EGameExperienceLoadState::Loaded &&
+		LoadState != EGameExperienceLoadState::Deactivating);
+
+	ensure(!ExternalFeatures.Contains(ExternalFeature));
+
+	ExternalFeatures.Add(ExternalFeature);
+
+	UE_LOG(LogGameExperience, Verbose, TEXT("Registered external feature: %s"), *ExternalFeature->GetFeatureName());
+}
+
+void UGameExperienceComponent::LoadExternalFeatures()
+{
+	check(LoadState != EGameExperienceLoadState::LoadingExternalFeatures);
+
+	NumExternalFeaturesLoading = ExternalFeatures.Num();
+	if (NumExternalFeaturesLoading > 0)
+	{
+		SetLoadState(EGameExperienceLoadState::LoadingExternalFeatures);
+
+		for (IGameExperienceExternalFeatureInterface* ExternalFeature : ExternalFeatures)
+		{
+			ExternalFeature->LoadFeature(FSimpleDelegate::CreateUObject(this, &ThisClass::OnExternalFeatureLoaded));
+		}
+
+		// clear after kicking off all loads
+		ExternalFeatures.Empty();
+	}
+	else
+	{
+		OnExperienceLoaded();
+	}
+}
+
+void UGameExperienceComponent::OnExternalFeatureLoaded()
+{
+	--NumExternalFeaturesLoading;
+
+	// continue once all features are loaded
+	if (NumExternalFeaturesLoading == 0)
+	{
+		OnExperienceLoaded();
+	}
+}
+
+void UGameExperienceComponent::OnExperienceLoaded()
+{
+	check(LoadState != EGameExperienceLoadState::Loaded);
+
+	SetLoadState(EGameExperienceLoadState::Loaded);
+
+	// broadcast events
+	OnExperienceLoadedEvent_HighPriority.Broadcast(Experience);
+	OnExperienceLoadedEvent_HighPriority.Clear();
+
+	OnExperienceLoadedEvent.Broadcast(Experience);
+	OnExperienceLoadedEvent.Clear();
+
+	OnExperienceLoadedEvent_LowPriority.Broadcast(Experience);
+	OnExperienceLoadedEvent_LowPriority.Clear();
+
+	UE_LOG(LogGameExperience, Verbose, TEXT("[%s] Game experience ready."),
+		*Experience->GetPrimaryAssetId().PrimaryAssetName.ToString());
+}
+
 void UGameExperienceComponent::DeactivateExperience()
 {
 	for (const FString& PluginURL : GameFeaturePluginURLs)
@@ -356,7 +427,7 @@ void UGameExperienceComponent::DeactivateExperience()
 
 	if (LoadState == EGameExperienceLoadState::Loaded)
 	{
-		LoadState = EGameExperienceLoadState::Deactivating;
+		SetLoadState(EGameExperienceLoadState::Deactivating);
 
 		NumExpectedPausers = INDEX_NONE;
 		NumPausers = 0;
@@ -414,8 +485,11 @@ void UGameExperienceComponent::OnActionDeactivationCompleted()
 void UGameExperienceComponent::OnAllActionsDeactivated()
 {
 	// TODO: actually unload, don't just deactivate
-	LoadState = EGameExperienceLoadState::Unloaded;
+
+	SetLoadState(EGameExperienceLoadState::Unloaded);
+
 	Experience = nullptr;
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, Experience, this);
 
 	NumExpectedPausers = 0;
 	NumPausers = 0;

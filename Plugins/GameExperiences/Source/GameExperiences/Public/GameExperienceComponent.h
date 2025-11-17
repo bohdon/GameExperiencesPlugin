@@ -6,20 +6,35 @@
 #include "GameExperienceDef.h"
 #include "GameExperienceProviderInterface.h"
 #include "GameFeaturePluginOperationResult.h"
+#include "GameplayTagContainer.h"
 #include "Components/GameStateComponent.h"
 #include "GameExperienceComponent.generated.h"
 
+class IGameExperienceExternalFeatureInterface;
 class UGameExperienceDef;
 
 
-enum class EGameExperienceLoadState
+UENUM(BlueprintType)
+enum class EGameExperienceLoadState : uint8
 {
+	/** Initial state, the experience is unloaded. */
 	Unloaded,
+	/** The experience definition and associated primary assets are loading. */
 	Loading,
+	/** The required GameFeature plugins are loading. */
 	LoadingGameFeatures,
-	ExecutingActions,
+	/** A delay for debugging, set via experience.debug.LoadDelay. */
 	DebugDelay,
+	/** Executing game feature actions */
+	ExecutingActions,
+	/**
+	 * Any additional registered features are loading.
+	 * Components added by game features can leverage this to perform any custom experience loading.
+	 */
+	LoadingExternalFeatures,
+	/** The experience and all features are fully loaded and gameplay ready. */
 	Loaded,
+	/** Experience has been deactivated due to EndPlay. */
 	Deactivating
 };
 
@@ -44,13 +59,17 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FOnGameExperienceLoaded, const UGameExperien
  * A game state component that manages loading and unloading game experiences.
  */
 UCLASS(Meta = (BlueprintSpawnableComponent))
-class GAMEEXPERIENCES_API UGameExperienceComponent : public UGameStateComponent,
-                                                     public IGameExperienceProviderInterface
+class GAMEEXPERIENCES_API UGameExperienceComponent
+	: public UGameStateComponent,
+	  public IGameExperienceProviderInterface
 {
 	GENERATED_BODY()
 
 public:
 	UGameExperienceComponent(const FObjectInitializer& ObjectInitializer);
+
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// IGameExperienceProviderInterface
 	virtual FPrimaryAssetId GetDesiredGameExperience(FString& OutDebugSource) const override;
@@ -71,6 +90,9 @@ public:
 		return Cast<T>(GetExperience());
 	}
 
+	/** Add an external feature to be loaded after executing game feature actions. */
+	void RegisterExternalFeature(IGameExperienceExternalFeatureInterface* ExternalFeature);
+
 	/** Return true if the experience is fully loaded. */
 	bool IsExperienceLoaded() const;
 
@@ -81,26 +103,8 @@ public:
 	void CallOrRegisterOnExperienceLoaded(FOnGameExperienceLoaded::FDelegate&& Delegate,
 	                                      EGameExperienceLoadEventPriority Priority = EGameExperienceLoadEventPriority::Normal);
 
-protected:
-	/** The current experience. */
-	UPROPERTY(ReplicatedUsing = OnRep_Experience)
-	TObjectPtr<UGameExperienceDef> Experience;
-
-	/** The current loading state of the experience. */
-	EGameExperienceLoadState LoadState = EGameExperienceLoadState::Unloaded;
-
-	/** List of game feature plugins that were enabled by the experience. */
-	TArray<FString> GameFeaturePluginURLs;
-
-	int32 NumFeaturePluginsLoading = 0;
-	int32 NumExpectedPausers = 0;
-	int32 NumPausers = 0;
-
-
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	UFUNCTION()
-	void OnRep_Experience();
+protected:	
+	void SetLoadState(EGameExperienceLoadState NewLoadState);
 
 	/** Start loading the experience, beginning with assets. */
 	virtual void LoadExperience();
@@ -120,11 +124,20 @@ protected:
 	 */
 	void OnGameFeaturePluginLoaded(const UE::GameFeatures::FResult& Result);
 
-	/** Called when the experience has been fully loaded. */
-	virtual void OnExperienceLoaded();
+	/** Called when all game feature plugins are loaded. */
+	virtual void OnAllGameFeaturePluginsLoaded();
 
 	/** Activate the experience actions. */
 	virtual void ExecuteActions();
+
+	/** Start loading any externally registered features, or continue to OnExperienceLoaded. */
+	virtual void LoadExternalFeatures();
+
+	/** Called when an external feature is ready. */
+	virtual void OnExternalFeatureLoaded();
+
+	/** Called after all features are fully loaded. */
+	virtual void OnExperienceLoaded();
 
 	/** Deactivate the experience. */
 	virtual void DeactivateExperience();
@@ -143,6 +156,28 @@ protected:
 
 	/** Called when the experience has been fully loaded, after other events. */
 	FOnGameExperienceLoaded OnExperienceLoadedEvent_LowPriority;
+
+protected:
+	/** The current experience. */
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_Experience)
+	TObjectPtr<UGameExperienceDef> Experience;
+
+	UFUNCTION()
+	void OnRep_Experience();
+
+	/** The current loading state of the experience. */
+	EGameExperienceLoadState LoadState = EGameExperienceLoadState::Unloaded;
+
+	/** List of game feature plugins that were enabled by the experience. */
+	TArray<FString> GameFeaturePluginURLs;
+
+	/** List of externally registered features to load. */
+	TArray<IGameExperienceExternalFeatureInterface*> ExternalFeatures;
+
+	int32 NumFeaturePluginsLoading = 0;
+	int32 NumExternalFeaturesLoading = 0;
+	int32 NumExpectedPausers = 0;
+	int32 NumPausers = 0;
 
 public:
 	/**
