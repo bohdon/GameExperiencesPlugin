@@ -8,10 +8,11 @@
 #include "UIExtensionSystem.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/HUD.h"
+#include "GameFramework/PlayerState.h"
 
 
 UGameFeatureAction_AddWidgets::UGameFeatureAction_AddWidgets()
-	: HUDClass(AHUD::StaticClass())
+	: ActorClass(AHUD::StaticClass())
 {
 }
 
@@ -64,10 +65,10 @@ void UGameFeatureAction_AddWidgets::AddToWorld(const FWorldContext& WorldContext
 	FWidgetContextHandles& Handles = FindOrAddContextHandles<FWidgetContextHandles>(ChangeContext);
 
 	// listen for actor registration
-	const TSoftClassPtr<AActor> ActorClass = !HUDClass.IsNull() ? HUDClass : AHUD::StaticClass();
+	const TSoftClassPtr<AActor> ActorClassPtr = !ActorClass.IsNull() ? ActorClass : AHUD::StaticClass();
 
 	const TSharedPtr<FComponentRequestHandle> RequestHandle = ComponentManager->AddExtensionHandler(
-		ActorClass, UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(this, &ThisClass::HandleActorExtension, ChangeContext));
+		ActorClassPtr, UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(this, &ThisClass::HandleActorExtension, ChangeContext));
 
 	Handles.ComponentRequestHandles.Add(RequestHandle);
 }
@@ -88,11 +89,40 @@ void UGameFeatureAction_AddWidgets::HandleActorExtension(AActor* Actor, FName Ev
 	}
 }
 
+ULocalPlayer* UGameFeatureAction_AddWidgets::GetLocalPlayerFromActor(AActor* Actor) const
+{
+	if (const AHUD* HUD = Cast<AHUD>(Actor))
+	{
+		return HUD->GetOwningPlayerController()->GetLocalPlayer();
+	}
+	if (const APlayerController* Player = Cast<APlayerController>(Actor))
+	{
+		return Player->GetLocalPlayer();
+	}
+	if (const APlayerState* PlayerState = Cast<APlayerState>(Actor))
+	{
+		// note that in networked games, Owner (the player controller)
+		// will likely not be replicated yet. Use a custom component extension event
+		// and override HandleActorExtension to listen for it (instead of ReceiverAdded) if needed.
+		if (PlayerState->GetPlayerController())
+		{
+			return PlayerState->GetPlayerController()->GetLocalPlayer();
+		}
+		else
+		{
+			UE_CLOG(!PlayerState->GetOwner(), LogGameFeatures, Warning,
+				TEXT("[%hs] PlayerState has no Owner, use a custom extension event for networked games (see comment)."), __FUNCTION__);
+		}
+		return nullptr;
+	}
+	UE_LOG(LogGameFeatures, Warning, TEXT("[%hs] Unsupported ActorClass: %s"),
+		__FUNCTION__, *Actor->GetClass()->GetName());
+	return nullptr;
+}
+
 void UGameFeatureAction_AddWidgets::AddWidgets(AActor* Actor, FWidgetContextHandles& Handles)
 {
-	const AHUD* HUD = CastChecked<AHUD>(Actor);
-
-	ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(HUD->GetOwningPlayerController()->Player);
+	ULocalPlayer* LocalPlayer = GetLocalPlayerFromActor(Actor);
 	if (!LocalPlayer)
 	{
 		// only operate on local players

@@ -53,9 +53,12 @@ class EXTENDEDGAMEFEATUREACTIONS_API UGameFeatureAction_AddWidgets : public UGam
 public:
 	UGameFeatureAction_AddWidgets();
 
-	/** The HUD class to extend. Should register with game component manager (like AModularHUD) */
-	UPROPERTY(EditAnywhere, Category = "UI")
-	TSoftClassPtr<AHUD> HUDClass;
+	/**
+	 * The actor class to extend.
+	 * Must be able to resolve a LocalPlayer from this in GetLocalPlayerFromActor.
+	 */
+	UPROPERTY(EditAnywhere, Category = "UI", meta = (AllowAbstract = "true"))
+	TSoftClassPtr<AActor> ActorClass;
 
 	/** List of widgets to add to PrimaryGameLayout layers. */
 	UPROPERTY(EditAnywhere, Meta = (TitleProperty = "{Layer} -> {WidgetClass}"), Category = "UI")
@@ -90,9 +93,11 @@ protected:
 	virtual void Reset(FContextHandles& Handles) override;
 	virtual void AddToWorld(const FWorldContext& WorldContext, FGameFeatureStateChangeContext ChangeContext) override;
 
-	void HandleActorExtension(AActor* Actor, FName EventName, FGameFeatureStateChangeContext ChangeContext);
+	virtual void HandleActorExtension(AActor* Actor, FName EventName, FGameFeatureStateChangeContext ChangeContext);
 
-	void AddWidgets(AActor* Actor, FWidgetContextHandles& Handles);
+	virtual ULocalPlayer* GetLocalPlayerFromActor(AActor* Actor) const;
 
-	void RemoveWidgets(AActor* Actor, FWidgetContextHandles& Handles);
+	virtual void AddWidgets(AActor* Actor, FWidgetContextHandles& Handles);
+
+	virtual void RemoveWidgets(AActor* Actor, FWidgetContextHandles& Handles);
 };
