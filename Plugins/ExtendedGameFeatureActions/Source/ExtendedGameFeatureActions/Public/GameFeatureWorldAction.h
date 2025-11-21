@@ -13,9 +13,8 @@
  * Base class for game feature actions that operate on a specific world context.
  *
  * Subclasses will likely want to track specific modifications made by the feature (for removal later).
- * In those cases, subclass the FGameFeatureWorldActionContextHandles struct and override
- * UGameFeatureWorldAction::AllocContextHandles. This way feature-specific info can be stored
- * in the pre-existing context handle structs.
+ * In those cases, subclass the FContextHandles struct and override AllocContextHandles.
+ * This way feature-specific info can be stored in the pre-existing context handle structs.
  */
 UCLASS(Abstract)
 class EXTENDEDGAMEFEATUREACTIONS_API UGameFeatureWorldAction : public UGameFeatureAction
@@ -44,6 +43,8 @@ protected:
 
 		virtual bool IsEmpty() const
 		{
+			// override in subclasses to ensure that the handles
+			// are valid during activate/deactivate, etc
 			return ComponentRequestHandles.IsEmpty();
 		}
 	};
