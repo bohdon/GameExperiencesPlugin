@@ -11,6 +11,7 @@
 #include "GameExperienceComponent.generated.h"
 
 class IGameExperienceExternalFeatureInterface;
+class UGameExperienceComponent;
 class UGameExperienceDef;
 
 
@@ -100,10 +101,15 @@ public:
 	 * Register a delegate to be called when the experience is loaded,
 	 * or call the delegate immediately if the experience is already loaded.
 	 */
-	void CallOrRegisterOnExperienceLoaded(FOnGameExperienceLoaded::FDelegate&& Delegate,
-	                                      EGameExperienceLoadEventPriority Priority = EGameExperienceLoadEventPriority::Normal);
+	void CallOrRegisterOnExperienceLoaded(
+		FOnGameExperienceLoaded::FDelegate&& Delegate, EGameExperienceLoadEventPriority Priority = EGameExperienceLoadEventPriority::Normal);
 
-protected:	
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FLoadingDelegate, UGameExperienceComponent* /*ExperienceComp*/, const UGameExperienceDef* /*Experience*/);
+
+	/** Called when any game experience component has started loading. */
+	static FLoadingDelegate OnExperienceLoadingEvent;
+
+protected:
 	void SetLoadState(EGameExperienceLoadState NewLoadState);
 
 	/** Start loading the experience, beginning with assets. */

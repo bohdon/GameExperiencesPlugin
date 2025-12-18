@@ -38,6 +38,9 @@ float GetGameExperienceDebugLoadDelay()
 }
 
 
+UGameExperienceComponent::FLoadingDelegate UGameExperienceComponent::OnExperienceLoadingEvent;
+
+
 UGameExperienceComponent::UGameExperienceComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -196,6 +199,9 @@ void UGameExperienceComponent::LoadExperience()
 
 	SetLoadState(EGameExperienceLoadState::Loading);
 
+	// broadcast _static_ delegate
+	OnExperienceLoadingEvent.Broadcast(this, Experience);
+
 	// determine whether to load client/server bundles
 	TArray<FName> BundlesToLoad;
 	const ENetMode OwnerNetMode = GetOwner()->GetNetMode();
@@ -231,9 +237,9 @@ void UGameExperienceComponent::LoadExperience()
 	{
 		// ensure delegate is called even when load is canceled
 		LoadHandle->BindCancelDelegate(FStreamableDelegate::CreateLambda([BundleLoadDelegate]
-		{
-			BundleLoadDelegate.ExecuteIfBound();
-		}));
+			{
+				BundleLoadDelegate.ExecuteIfBound();
+			}));
 	}
 }
 
@@ -434,9 +440,9 @@ void UGameExperienceComponent::DeactivateExperience()
 
 		// setup a callback for deactivate complete
 		FGameFeatureDeactivatingContext Context(TEXT(""), [this](FStringView InPauserTag)
-		{
-			OnActionDeactivationCompleted();
-		});
+			{
+				OnActionDeactivationCompleted();
+			});
 
 		if (const FWorldContext* WorldContext = GEngine->GetWorldContextFromWorld(GetWorld()))
 		{
