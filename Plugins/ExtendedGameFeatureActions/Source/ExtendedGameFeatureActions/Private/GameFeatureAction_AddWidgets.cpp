@@ -93,7 +93,7 @@ ULocalPlayer* UGameFeatureAction_AddWidgets::GetLocalPlayerFromActor(AActor* Act
 {
 	if (const AHUD* HUD = Cast<AHUD>(Actor))
 	{
-		return HUD->GetOwningPlayerController()->GetLocalPlayer();
+		return HUD->GetOwningPlayerController() ? HUD->GetOwningPlayerController()->GetLocalPlayer() : nullptr;
 	}
 	if (const APlayerController* Player = Cast<APlayerController>(Actor))
 	{
