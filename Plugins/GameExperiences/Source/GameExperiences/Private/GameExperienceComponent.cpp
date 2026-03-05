@@ -11,6 +11,7 @@
 #include "GameFeaturesSubsystem.h"
 #include "GameFeaturesSubsystemSettings.h"
 #include "TimerManager.h"
+#include "UnrealEngine.h"
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/CommandLine.h"
@@ -35,6 +36,29 @@ float GetGameExperienceDebugLoadDelay()
 	const float Delay = CVarGameExperienceDebugLoadDelay.GetValueOnAnyThread();
 	const float RandomDelay = FMath::FRand() * CVarGameExperienceDebugLoadRandomDelay.GetValueOnAnyThread();
 	return FMath::Max(0.0f, Delay + RandomDelay);
+}
+
+
+namespace GameExperiences
+{
+	FString GetNetDebugPrefix(const UObject* WorldContextObject)
+	{
+		if (const UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull))
+		{
+			switch (World->GetNetMode())
+			{
+			case NM_DedicatedServer:
+			case NM_ListenServer:
+				return TEXT("Server: ");
+			case NM_Client:
+				return GetDebugStringForWorld(World) + TEXT(": ");
+			case NM_Standalone:
+				return TEXT("Standalone: ");
+			default: ;
+			}
+		}
+		return FString();
+	}
 }
 
 
@@ -127,11 +151,13 @@ void UGameExperienceComponent::AutoResolveExperience()
 	if (!ExperienceId.IsValid())
 	{
 		// no experience was found
-		UE_LOG(LogGameExperience, Warning, TEXT("No desired GameExperience found"));
+		UE_LOG(LogGameExperience, Warning, TEXT("%sNo desired GameExperience found"),
+			*GameExperiences::GetNetDebugPrefix(this));
 		return;
 	}
 
-	UE_LOG(LogGameExperience, Log, TEXT("Using GameExperience '%s' from %s"), *ExperienceId.ToString(), *DebugExperienceSource);
+	UE_LOG(LogGameExperience, Log, TEXT("%sUsing GameExperience '%s' from %s"),
+		*GameExperiences::GetNetDebugPrefix(this), *ExperienceId.ToString(), *DebugExperienceSource);
 
 	SetExperience(ExperienceId);
 }
@@ -187,7 +213,8 @@ void UGameExperienceComponent::SetLoadState(EGameExperienceLoadState NewLoadStat
 {
 	LoadState = NewLoadState;
 
-	UE_LOG(LogGameExperience, Verbose, TEXT("[%s] LoadState: %s"),
+	UE_LOG(LogGameExperience, Verbose, TEXT("%s[%s] LoadState: %s"),
+		*GameExperiences::GetNetDebugPrefix(this),
 		*Experience->GetPrimaryAssetId().PrimaryAssetName.ToString(),
 		*StaticEnum<EGameExperienceLoadState>()->GetNameStringByValue((uint8)NewLoadState));
 }
@@ -367,7 +394,8 @@ void UGameExperienceComponent::RegisterExternalFeature(IGameExperienceExternalFe
 
 	ExternalFeatures.Add(ExternalFeature);
 
-	UE_LOG(LogGameExperience, Verbose, TEXT("Registered external feature: %s"), *ExternalFeature->GetFeatureName());
+	UE_LOG(LogGameExperience, Verbose, TEXT("%sRegistered external feature: %s"),
+		*GameExperiences::GetNetDebugPrefix(this), *ExternalFeature->GetFeatureName());
 }
 
 void UGameExperienceComponent::LoadExternalFeatures()
@@ -420,7 +448,8 @@ void UGameExperienceComponent::OnExperienceLoaded()
 	OnExperienceLoadedEvent_LowPriority.Broadcast(Experience);
 	OnExperienceLoadedEvent_LowPriority.Clear();
 
-	UE_LOG(LogGameExperience, Verbose, TEXT("[%s] Game experience ready."),
+	UE_LOG(LogGameExperience, Verbose, TEXT("%s[%s] Game experience ready."),
+		*GameExperiences::GetNetDebugPrefix(this),
 		*Experience->GetPrimaryAssetId().PrimaryAssetName.ToString());
 }
 

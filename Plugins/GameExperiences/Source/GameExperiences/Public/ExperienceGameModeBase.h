@@ -37,10 +37,16 @@ public:
 
 	virtual void InitGameState() override;
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
-	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+	virtual bool PlayerCanRestart_Implementation(APlayerController* Player) override;
 
 	/** Resolve and set the current game experience, then start loading. */
 	virtual void InitGameExperience();
+
+	/**
+	 * Return true if the experience is loaded for a player.
+	 * Can be implemented in subclasses to wait for client experience loads in addition to server.
+	 */
+	virtual bool IsPlayerExperienceLoaded(APlayerController* Player) const;
 
 protected:
 	/**

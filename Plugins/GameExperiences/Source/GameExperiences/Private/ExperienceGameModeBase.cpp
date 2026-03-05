@@ -9,8 +9,8 @@
 
 
 AExperienceGameModeBase::AExperienceGameModeBase(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer),
-	  bRestartPlayersOnExperienceLoad(true)
+	: Super(ObjectInitializer)
+	, bRestartPlayersOnExperienceLoad(true)
 {
 }
 
@@ -59,14 +59,14 @@ void AExperienceGameModeBase::InitGame(const FString& MapName, const FString& Op
 	GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::InitGameExperience);
 }
 
-void AExperienceGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
+bool AExperienceGameModeBase::PlayerCanRestart_Implementation(APlayerController* Player)
 {
-	// delay starting players until the experience is loaded,
-	// when the experience is loaded players will be restarted.
-	if (IsExperienceLoaded())
+	if (!Player || !IsExperienceLoaded() || !IsPlayerExperienceLoaded(Player))
 	{
-		Super::HandleStartingNewPlayer_Implementation(NewPlayer);
+		return false;
 	}
+
+	return Super::PlayerCanRestart_Implementation(Player);
 }
 
 void AExperienceGameModeBase::InitGameExperience()
@@ -75,6 +75,13 @@ void AExperienceGameModeBase::InitGameExperience()
 	{
 		ExperienceComponent->AutoResolveExperience();
 	}
+}
+
+bool AExperienceGameModeBase::IsPlayerExperienceLoaded(APlayerController* Player) const
+{
+	// implement in subclass if you want to block players
+	// from restarting until their client experience has finished loading
+	return true;
 }
 
 void AExperienceGameModeBase::OnExperienceLoaded(const UGameExperienceDef* Experience)
