@@ -24,6 +24,14 @@ struct FGameFeatureExtendedAbilitySetEntry
 	UPROPERTY(EditAnywhere, Category="Abilities")
 	TSoftClassPtr<AActor> ActorClass;
 
+	/** Add the abilities to player-controlled characters. Has no effect if actor class is not a pawn or player state. */
+	UPROPERTY(EditAnywhere, Category = "Abilities")
+	bool bAddToPlayers = true;
+
+	/** Add the abilities to bot-controlled characters. Has no effect if actor class is not a pawn or player state. */
+	UPROPERTY(EditAnywhere, Category = "Abilities")
+	bool bAddToBots = true;
+
 	/** List of ability sets to grant. */
 	UPROPERTY(EditAnywhere, Category="Attributes", Meta = (AssetBundles = "Client,Server"))
 	TArray<TSoftObjectPtr<const UExtendedAbilitySet>> AbilitySets;

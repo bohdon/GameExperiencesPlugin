@@ -7,6 +7,8 @@
 #include "AbilitySystemGlobals.h"
 #include "ExtendedAbilitySet.h"
 #include "Engine/GameInstance.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerState.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GameFeatureAction_AddAbilities)
 
@@ -74,6 +76,29 @@ void UGameFeatureAction_AddAbilities::HandleActorExtension(AActor* Actor, FName 
 	}
 
 	const FGameFeatureExtendedAbilitySetEntry& Entry = Abilities[EntryIdx];
+
+	if (const APawn* Pawn = Cast<APawn>(Actor))
+	{
+		if (Pawn->IsPlayerControlled() && !Entry.bAddToPlayers)
+		{
+			return;
+		}
+		if (Pawn->IsBotControlled() && !Entry.bAddToBots)
+		{
+			return;
+		}
+	}
+	else if (const APlayerState* PlayerState = Cast<APlayerState>(Actor))
+	{
+		if (!PlayerState->IsABot() && !Entry.bAddToPlayers)
+		{
+			return;
+		}
+		if (PlayerState->IsABot() && !Entry.bAddToBots)
+		{
+			return;
+		}
+	}
 
 	if (EventName == UGameFrameworkComponentManager::NAME_ExtensionAdded ||
 		EventName == UGameFrameworkComponentManager::NAME_ReceiverAdded)
