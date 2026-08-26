@@ -115,7 +115,7 @@ void UGameFeatureAction_AddAbilities::HandleActorExtension(AActor* Actor, FName 
 void UGameFeatureAction_AddAbilities::AddAbilitySets(AActor* Actor, const TArray<TSoftObjectPtr<const UExtendedAbilitySet>>& AbilitySets,
                                                      FAbilityContextHandles& Handles)
 {
-	if (!Actor->HasAuthority())
+	if (!Actor || Actor->HasAnyFlags(RF_BeginDestroyed) || !Actor->HasAuthority())
 	{
 		return;
 	}
@@ -140,6 +140,12 @@ void UGameFeatureAction_AddAbilities::RemoveAbilitySets(AActor* Actor, FAbilityC
 	if (!ActorAbilitySetHandles)
 	{
 		// no record of extending this actor
+		return;
+	}
+
+	if (!Actor || Actor->HasAnyFlags(RF_BeginDestroyed))
+	{
+		Handles.AbilitySetHandles.Remove(Actor);
 		return;
 	}
 
