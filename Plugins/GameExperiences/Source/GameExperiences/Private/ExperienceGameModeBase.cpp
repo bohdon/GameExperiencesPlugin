@@ -7,6 +7,10 @@
 #include "GameExperiencesModule.h"
 #include "TimerManager.h"
 
+#if WITH_EDITOR
+#include "Editor.h"
+#endif
+
 
 AExperienceGameModeBase::AExperienceGameModeBase(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -71,6 +75,13 @@ bool AExperienceGameModeBase::PlayerCanRestart_Implementation(APlayerController*
 
 void AExperienceGameModeBase::InitGameExperience()
 {
+#if WITH_EDITOR
+	if (GEditor && GEditor->IsSimulatingInEditor())
+	{
+		return;
+	}
+#endif
+
 	if (UGameExperienceComponent* ExperienceComponent = GetExperienceComponent())
 	{
 		ExperienceComponent->AutoResolveExperience();

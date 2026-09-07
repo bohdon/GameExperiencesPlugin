@@ -24,5 +24,13 @@ public class GameExperiences : ModuleRules
 			"Slate",
 			"SlateCore",
 		});
+
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[]
+			{
+				"UnrealEd",
+			});
+		}
 	}
 }
