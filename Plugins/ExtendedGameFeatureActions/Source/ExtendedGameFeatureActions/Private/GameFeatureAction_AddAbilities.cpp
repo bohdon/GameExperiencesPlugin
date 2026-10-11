@@ -8,6 +8,7 @@
 #include "ExtendedAbilitySet.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GameFeatureAction_AddAbilities)
@@ -90,11 +91,14 @@ void UGameFeatureAction_AddAbilities::HandleActorExtension(AActor* Actor, FName 
 	}
 	else if (const APlayerState* PlayerState = Cast<APlayerState>(Actor))
 	{
-		if (!PlayerState->IsABot() && !Entry.bAddToPlayers)
+		// bIsABot is not assigned until PostInitializeComponents, so check the owning controller instead
+		const bool bIsBot = Cast<APlayerController>(PlayerState->GetOwningController()) == nullptr;
+
+		if (!bIsBot && !Entry.bAddToPlayers)
 		{
 			return;
 		}
-		if (PlayerState->IsABot() && !Entry.bAddToBots)
+		if (bIsBot && !Entry.bAddToBots)
 		{
 			return;
 		}
